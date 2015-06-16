@@ -2,11 +2,13 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
+#include <string.h>
 
 #include "utils.h"
 #include "neuron_network_lib.h"
 
-neural_network *build_neural_network(int input_layer_size, int *hidden_layer_size, int hidden_layer_depth, int output_layer_size)
+neural_network *build_neural_network(unsigned int input_layer_size, unsigned int *hidden_layer_size, 
+unsigned int hidden_layer_depth, unsigned int output_layer_size)
 {
   srand(time(NULL));
   int last_layer_index = hidden_layer_depth-1;
@@ -101,37 +103,40 @@ neural_network *build_neural_network(int input_layer_size, int *hidden_layer_siz
 
 double *emulate(neural_network *nn, double *input)
 {
-  unsigned int i, j, k;
+  const unsigned int stride = sizeof(double) * nn->input_layer_size;
+  register unsigned int i, j, k;
+  register double value;
+  register double activity; 
+  hneuron *neuron;
   unsigned int len;
   unsigned int off;
-  double value; 
-  double activity; 
+  double *base_pointer;
   
   double *output = malloc(sizeof(double) * nn->output_layer_size);
   
-  #pragma omp parallel for private(i, j) default(shared) schedule(static) collapse(2)
-  for (i = 0; i < nn->input_layer_size; i++)
-  {
-    for (j = 0; j < nn->ineurons[i].output_count; j++)
-      (*nn->ineurons[i].output[j]->value) = input[i];
-  }
+  len = nn->hidden_layer_size[0];
+  base_pointer = nn->hidden_layer_values[0];
+  
+  #pragma omp parallel for private(i, j) default(shared) schedule(static)
+  for (i = 0; i < len;i++)
+    memcpy((base_pointer+i*nn->input_layer_size), input, stride);
   
   for (i = 0; i < nn->hidden_layer_depth; i++)
   {
     len = i != 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
-    #pragma omp parallel for private(j, k, value, off, activity) default(shared) schedule(static)
+    #pragma omp parallel for private(j, k, value, off, activity, neuron) default(shared) schedule(static)
     for (j = 0; j < nn->hidden_layer_size[i]; j++)
     {
       value = 0;
       off = (j*len);
       
-      hneuron *neuron = &nn->hneurons[i][j];
+      neuron = &nn->hneurons[i][j];
       
       for (k = len-1; k--; )
         value += nn->hidden_layer_weights[i][off+k] * nn->hidden_layer_values[i][off+k];
       activity = sigmoid(value);
       neuron->activity = activity; 
-      for (k = 0; k < nn->hneurons[i][j].output_count; k++)
+      for (k = nn->hneurons[i][j].output_count; k--; )
         (*neuron->output[k]->value) = activity;
     }
   }
@@ -160,8 +165,8 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
   ineuron *ineurons = nn->ineurons;
   hneuron **hneurons = nn->hneurons;
   
-  int i, j, k;
-  int count = 0;
+  register int i, j, k;
+  register int count = 0;
   
   for (i = 0; i < nn->hidden_layer_depth+1; i++)
   {
@@ -175,34 +180,37 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
     error_ges += fabs(error[nn->hidden_layer_depth][i]);
   }
   
-  #pragma omp parallel for private(i, j) default(shared) schedule(static) collapse(2)
+  #pragma omp parallel for private(i, j) default(shared) schedule(static)
   for (i = 0; i < nn->output_layer_size; i++)
   {
+    double err = learning_rate * error[nn->hidden_layer_depth][i];
     for (j = 0; j < nn->hidden_layer_size[nn->hidden_layer_depth-1]; j++)
     {
-      (*oneurons[i].input[j]->weight) = (*oneurons[i].input[j]->weight) + (learning_rate * error[nn->hidden_layer_depth][i] * hneurons[nn->hidden_layer_depth-1][j].activity);
+      (*oneurons[i].input[j]->weight) += (err * hneurons[nn->hidden_layer_depth-1][j].activity);
     }
   }
   
   for (i = nn->hidden_layer_depth-1; i >= 0; i--)
   {
     
-    #pragma omp parallel for private(j, count) default(shared) schedule(static)
+    #pragma omp parallel for private(j, k, count) default(shared) schedule(static)
     for (j = 0; j < nn->hidden_layer_size[i]; j++)
     {
       double err_backprop = 0;
       count = i+1 != nn->hidden_layer_depth ? nn->hidden_layer_size[i+1] : nn->output_layer_size;
 
-      for (int k = 0; k < count; k++)
+      for (k = 0; k < count; k++)
       {
         err_backprop += (error[i+1][k] * (*hneurons[i][j].output[k]->weight));
       }
       error[i][j] = nn->hneurons[i][j].activity * (1 - hneurons[i][j].activity) * err_backprop;
       count = i != 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
 
+      double err = learning_rate * error[i][j];
+      
       for (k = 0; k < count; k++)
       {
-        (*hneurons[i][j].input[k]->weight) = (*hneurons[i][j].input[k]->weight) + (learning_rate * error[i][j] * (*hneurons[i][j].input[k]->value));
+        (*hneurons[i][j].input[k]->weight) += (err * (*hneurons[i][j].input[k]->value));
       }
     }
   }

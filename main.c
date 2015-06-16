@@ -5,7 +5,7 @@
 #include "neural_files.h"
 #include "utils.h"
 
-#define REPEAT 10
+#define REPEAT 1
 #define ERROR_TOLERANCE 0.4
 #define DIGITS_TO_TRAIN 50000
 #define DIGITS_TO_TEST 1000
@@ -82,7 +82,6 @@ int main(int argc, char *argv[])
             printf("--> output : %f, expected output : %f \n", out[k], output[(i*10)+k]);
           else 
             printf("    output : %f, expected output : %f \n", out[k], output[(i*10)+k]);
-        
         }
         break;
       }
@@ -90,7 +89,7 @@ int main(int argc, char *argv[])
   }
   printf("%d errors found with %d digits checked \n", error_count, DIGITS_TO_TEST);
   
-  write_neural_network_to_file(nn, "nn.hex");
+  //write_neural_network_to_file(nn, "nn.hex");
   
   return 0;
 }

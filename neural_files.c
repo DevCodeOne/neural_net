@@ -3,18 +3,18 @@
 #include "neuron_network_lib.h"
 #include "neural_files.h"
 
-int read_int(FILE *file)
+unsigned int read_int(FILE *file)
 {
-  return fgetc(file) << 0 | fgetc(file) << 8 | fgetc(file) << 16 | fgetc(file) << 24;
+  return (unsigned int) (fgetc(file) << 0 | fgetc(file) << 8 | fgetc(file) << 16 | fgetc(file) << 24);
 }
 
 // stupid fukks
-int read_int_big_endian(FILE *file)
+unsigned int read_int_big_endian(FILE *file)
 {
-  return fgetc(file) << 24 | fgetc(file) << 16 | fgetc(file) << 8 | fgetc(file) << 0;
+  return (unsigned int) (fgetc(file) << 24 | fgetc(file) << 16 | fgetc(file) << 8 | fgetc(file) << 0);
 }
 
-void write_int(int i, FILE *file)
+void write_int(unsigned int i, FILE *file)
 {
   fwrite(&i, sizeof(int), 1, file);
 }
@@ -74,14 +74,14 @@ neural_network *read_neural_network_from_file(char *str)
   if (file == NULL)
     printf("Error opening file %s \n", str);
   
-  int input_layer_size = read_int(file);
-  int hidden_layer_depth = read_int(file);
-  int *hidden_layer_size = malloc(sizeof(int) * hidden_layer_depth); 
+  unsigned int input_layer_size = read_int(file);
+  unsigned int hidden_layer_depth = read_int(file);
+  unsigned int *hidden_layer_size = malloc(sizeof(int) * hidden_layer_depth); 
   
   for (int i = 0; i < hidden_layer_depth; i++)
     hidden_layer_size[i] = read_int(file); 
   
-  int output_layer_size = read_int(file);
+  unsigned int output_layer_size = read_int(file);
   
   neural_network *nn = build_neural_network(input_layer_size, hidden_layer_size, hidden_layer_depth, output_layer_size);
   
@@ -130,10 +130,6 @@ static __inline void write_synapse(synapse *syn, FILE *file)
 
 static __inline void read_synapse(synapse *syn, FILE *file)
 {
-  double weight; 
-  double value; 
-  fread((void *) (&weight), sizeof(double), 1, file); 
-  fread((void *) (&value), sizeof(double), 1, file);
-  (*syn->weight) = weight;
-  (*syn->value) = value;
+  fread((void *) (syn->weight), sizeof(double), 1, file); 
+  fread((void *) (syn->value), sizeof(double), 1, file);
 }
