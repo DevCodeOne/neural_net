@@ -52,3 +52,4 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
 void teach(neural_network *nn, int number_of_samples, double *inputs, int number_of_inputs, double *expected_outputs, int number_of_outputs, double learning_rate, int passes);
 static __inline double sigmoid(double x);
 static __inline double random_weight(double min, double max);
+static __inline double dabs(double x);

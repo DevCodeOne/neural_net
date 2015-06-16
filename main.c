@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <stdlib.h>
 #include "neuron_network_lib.h"
 #include "neural_files.h"
 #include "utils.h"
@@ -26,9 +27,9 @@ int main(int argc, char *argv[])
   
   printf("Number of items %d width[%d] height[%d] \n", ts->number_of_samples, ts->width_of_samples, ts->height_of_samples);
   
-  //neural_network *nn = build_neural_network(ts->width_of_samples * ts->height_of_samples, hidden_size, 1, 10);
+  neural_network *nn = build_neural_network(ts->width_of_samples * ts->height_of_samples, hidden_size, 1, 10);
   
-  neural_network *nn = read_neural_network_from_file("nn.hex");
+  //neural_network *nn = read_neural_network_from_file("nn.hex");
   
   int len = ts->number_of_samples * ts->width_of_samples * ts->height_of_samples;
   for (int i = 0; i < len; i++)
@@ -89,7 +90,7 @@ int main(int argc, char *argv[])
   }
   printf("%d errors found with %d digits checked \n", error_count, DIGITS_TO_TEST);
   
-  //write_neural_network_to_file(nn, "nn.hex");
+  write_neural_network_to_file(nn, "nn.hex");
   
   return 0;
 }

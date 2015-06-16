@@ -168,7 +168,7 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
   register int i, j, k;
   register int count = 0;
   
-  for (i = 0; i < nn->hidden_layer_depth+1; i++)
+  for (i = nn->hidden_layer_depth+1; i--; )
   {
     error[i] = malloc(sizeof(double *) * (i < nn->hidden_layer_depth ? nn->hidden_layer_size[i] : nn->output_layer_size));
   }
@@ -184,7 +184,7 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
   for (i = 0; i < nn->output_layer_size; i++)
   {
     double err = learning_rate * error[nn->hidden_layer_depth][i];
-    for (j = 0; j < nn->hidden_layer_size[nn->hidden_layer_depth-1]; j++)
+    for (j = nn->hidden_layer_size[nn->hidden_layer_depth-1]; j--; )
     {
       (*oneurons[i].input[j]->weight) += (err * hneurons[nn->hidden_layer_depth-1][j].activity);
     }
@@ -199,16 +199,17 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
       double err_backprop = 0;
       count = i+1 != nn->hidden_layer_depth ? nn->hidden_layer_size[i+1] : nn->output_layer_size;
 
-      for (k = 0; k < count; k++)
+      for (k = count; k--; )
       {
         err_backprop += (error[i+1][k] * (*hneurons[i][j].output[k]->weight));
       }
+      
       error[i][j] = nn->hneurons[i][j].activity * (1 - hneurons[i][j].activity) * err_backprop;
       count = i != 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
 
       double err = learning_rate * error[i][j];
       
-      for (k = 0; k < count; k++)
+      for (k = count; k--; )
       {
         (*hneurons[i][j].input[k]->weight) += (err * (*hneurons[i][j].input[k]->value));
       }
@@ -245,7 +246,6 @@ void teach(neural_network *nn, int number_of_samples, double *inputs, int number
       }
     }
     percent = 0;
-    //len = sort_backwards_abs_values(error, index, number_of_samples, 0.0035);
     printf("Pass %d of %d [ %.2f % ] %d elements checked of %d elements overall \n", i+1, passes, 100.0, len, number_of_samples);
   }
   free(error); 
@@ -272,7 +272,7 @@ void clear_values(neural_network *nn)
 
 __inline double sigmoid(double x)
 {
-  return 1 / (1 + exp(-x));
+  return  0.5 * x / (1 + (x > 0 ? x : -x)) + 0.5;
 }
 
 __inline double random_weight(double min, double max)
