@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include "neuron_network_lib.h"
 #include "neural_files.h"
-#include "utils.h"
 
 #define REPEAT 1
 #define ERROR_TOLERANCE 0.4
