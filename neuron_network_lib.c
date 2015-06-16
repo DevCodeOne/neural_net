@@ -4,7 +4,6 @@
 #include <math.h>
 #include <string.h>
 
-#include "utils.h"
 #include "neuron_network_lib.h"
 
 neural_network *build_neural_network(unsigned int input_layer_size, unsigned int *hidden_layer_size, 
