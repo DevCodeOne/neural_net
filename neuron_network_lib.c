@@ -4,8 +4,10 @@
 #include <math.h>
 #include <string.h>
 
-#include "utils.h"
 #include "neuron_network_lib.h"
+
+static inline float sigmoid(float x) { return  0.5 * x / (1 + (x > 0 ? x : -x)) + 0.5; }
+static inline float random_weight(float min, float max) { return (float) ((rand() / RAND_MAX) * (max - min)) + min; }
 
 neural_network *build_neural_network(unsigned int input_layer_size, unsigned int *hidden_layer_size, 
 unsigned int hidden_layer_depth, unsigned int output_layer_size)
@@ -13,10 +15,9 @@ unsigned int hidden_layer_depth, unsigned int output_layer_size)
   srand(time(NULL));
   int last_layer_index = hidden_layer_depth-1;
   neural_network *nn = malloc(sizeof(neural_network));
-  nn->ineurons = malloc(sizeof(ineuron) * input_layer_size);
   nn->oneurons = malloc(sizeof(oneuron) * output_layer_size);
   nn->hneurons = malloc(sizeof(hneuron *) * hidden_layer_depth);
-  nn->hidden_layer_size = malloc(sizeof(double) * hidden_layer_depth); 
+  nn->hidden_layer_size = malloc(sizeof(float) * hidden_layer_depth); 
   for (int i = 0; i < hidden_layer_depth; i++)
     nn->hidden_layer_size[i] = hidden_layer_size[i];
   
@@ -24,15 +25,15 @@ unsigned int hidden_layer_depth, unsigned int output_layer_size)
   nn->input_layer_size = input_layer_size; 
   nn->output_layer_size = output_layer_size;
   
-  nn->output_layer_weights = malloc(sizeof(double) * input_layer_size * hidden_layer_size[last_layer_index]); 
-  nn->output_layer_values = malloc(sizeof(double) * input_layer_size * hidden_layer_size[last_layer_index]);
+  nn->output_layer_weights = malloc(sizeof(float) * output_layer_size * hidden_layer_size[last_layer_index]); 
+  nn->output_layer_values = malloc(sizeof(float) * output_layer_size * hidden_layer_size[last_layer_index]);
   
-  nn->hidden_layer_weights = malloc(sizeof(double *) * hidden_layer_depth);
-  nn->hidden_layer_values = malloc(sizeof(double *) * hidden_layer_depth);
+  nn->hidden_layer_weights = malloc(sizeof(float *) * hidden_layer_depth);
+  nn->hidden_layer_values = malloc(sizeof(float *) * hidden_layer_depth);
   for (int i = 0; i < hidden_layer_depth; i++)
   {
-    nn->hidden_layer_weights[i] = malloc(sizeof(double) * hidden_layer_size[i] * (i-1 > 0 ? hidden_layer_size[i-1] : input_layer_size));
-    nn->hidden_layer_values[i] = malloc(sizeof(double) * hidden_layer_size[i] * (i-1 > 0 ? hidden_layer_size[i-1] : input_layer_size));
+    nn->hidden_layer_weights[i] = malloc(sizeof(float) * hidden_layer_size[i] * (i-1 > 0 ? hidden_layer_size[i-1] : input_layer_size));
+    nn->hidden_layer_values[i] = malloc(sizeof(float) * hidden_layer_size[i] * (i-1 > 0 ? hidden_layer_size[i-1] : input_layer_size));
   }
   
   for (int i = 0; i < hidden_layer_depth; i++)
@@ -46,23 +47,19 @@ unsigned int hidden_layer_depth, unsigned int output_layer_size)
   }
   
   for (int i = 0; i < output_layer_size; i++)
-  {
     nn->oneurons[i].input = malloc(sizeof(synapse *) * hidden_layer_size[last_layer_index]);
-  }
   
   for (int i = 0; i < input_layer_size; i++) 
   {
     synapse **syn = malloc(sizeof(synapse *) * hidden_layer_size[0]);
-    nn->ineurons[i].output = malloc(sizeof(synapse *) * hidden_layer_size[0]);
     for (int j = 0; j < hidden_layer_size[0]; j++)
     {
       syn[j] = malloc(sizeof(synapse));
       nn->hneurons[0][j].input[nn->hneurons[0][j].input_count++] = syn[j];
-      nn->ineurons[i].output[nn->ineurons[i].output_count] = syn[j]; 
+      syn[j]->weight = &nn->hidden_layer_weights[0][(j*input_layer_size)+i];
+      syn[j]->value = &nn->hidden_layer_values[0][(j*input_layer_size)+i];
       nn->hidden_layer_weights[0][(j*input_layer_size)+i] = random_weight(-0.5, 0.5);
       nn->hidden_layer_values[0][(j*input_layer_size)+i] = 0;
-      nn->ineurons[i].output[nn->ineurons[i].output_count]->weight = &nn->hidden_layer_weights[0][(j*input_layer_size)+i];
-      nn->ineurons[i].output[nn->ineurons[i].output_count++]->value = &nn->hidden_layer_values[0][(j*input_layer_size)+i];
     }
   }
   
@@ -101,18 +98,18 @@ unsigned int hidden_layer_depth, unsigned int output_layer_size)
   return nn;
 }
 
-double *emulate(neural_network *nn, double *input)
+float *emulate(neural_network *nn, float *input)
 {
-  const unsigned int stride = sizeof(double) * nn->input_layer_size;
+  const unsigned int stride = sizeof(float) * nn->input_layer_size;
   register unsigned int i, j, k;
-  register double value;
-  register double activity; 
+  register float value;
+  register float activity; 
   hneuron *neuron;
   unsigned int len;
   unsigned int off;
-  double *base_pointer;
+  float *base_pointer;
   
-  double *output = malloc(sizeof(double) * nn->output_layer_size);
+  float *output = malloc(sizeof(float) * nn->output_layer_size);
   
   len = nn->hidden_layer_size[0];
   base_pointer = nn->hidden_layer_values[0];
@@ -156,22 +153,19 @@ double *emulate(neural_network *nn, double *input)
   return output;
 }
 
-double adjust_weights(neural_network *nn, double *input, double *expected_output, double learning_rate)
+float adjust_weights(neural_network *nn, float *input, float *expected_output, float learning_rate)
 {
-  double *output = emulate(nn, input);
-  double **error = malloc(sizeof(double *) * (nn->hidden_layer_depth+1));
-  double error_ges = 0;
+  float *output = emulate(nn, input);
+  float **error = malloc(sizeof(float *) * (nn->hidden_layer_depth+1));
+  float error_ges = 0;
   oneuron *oneurons = nn->oneurons; 
-  ineuron *ineurons = nn->ineurons;
   hneuron **hneurons = nn->hneurons;
   
   register int i, j, k;
   register int count = 0;
   
   for (i = nn->hidden_layer_depth+1; i--; )
-  {
-    error[i] = malloc(sizeof(double *) * (i < nn->hidden_layer_depth ? nn->hidden_layer_size[i] : nn->output_layer_size));
-  }
+    error[i] = malloc(sizeof(float *) * (i < nn->hidden_layer_depth ? nn->hidden_layer_size[i] : nn->output_layer_size));
   
   #pragma omp parallel for private(i) default(shared) schedule(static)
   for (i = 0; i < nn->output_layer_size; i++) 
@@ -183,7 +177,7 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
   #pragma omp parallel for private(i, j) default(shared) schedule(static)
   for (i = 0; i < nn->output_layer_size; i++)
   {
-    double err = learning_rate * error[nn->hidden_layer_depth][i];
+    float err = learning_rate * error[nn->hidden_layer_depth][i];
     for (j = nn->hidden_layer_size[nn->hidden_layer_depth-1]; j--; )
     {
       (*oneurons[i].input[j]->weight) += (err * hneurons[nn->hidden_layer_depth-1][j].activity);
@@ -196,7 +190,7 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
     #pragma omp parallel for private(j, k, count) default(shared) schedule(static)
     for (j = 0; j < nn->hidden_layer_size[i]; j++)
     {
-      double err_backprop = 0;
+      float err_backprop = 0;
       count = i+1 != nn->hidden_layer_depth ? nn->hidden_layer_size[i+1] : nn->output_layer_size;
 
       for (k = count; k--; )
@@ -207,7 +201,7 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
       error[i][j] = nn->hneurons[i][j].activity * (1 - hneurons[i][j].activity) * err_backprop;
       count = i != 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
 
-      double err = learning_rate * error[i][j];
+      float err = learning_rate * error[i][j];
       
       for (k = count; k--; )
       {
@@ -222,11 +216,11 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
   return error_ges;
 }
 
-void teach(neural_network *nn, int number_of_samples, double *inputs, int number_of_inputs, double *expected_outputs, int number_of_outputs, double learning_rate, int passes)
+void teach(neural_network *nn, int number_of_samples, float *inputs, int number_of_inputs, float *expected_outputs, int number_of_outputs, float learning_rate, int passes)
 {
   int print_after = number_of_samples / PRINT_DELAY;
-  double percent = 0;
-  double *error = malloc(sizeof(double) * number_of_samples);
+  float percent = 0;
+  float *error = malloc(sizeof(float) * number_of_samples);
   int *index = malloc(sizeof(int) * number_of_samples);
   for (int i  = 0; i < number_of_samples; i++)
     index[i] = i;
@@ -241,7 +235,7 @@ void teach(neural_network *nn, int number_of_samples, double *inputs, int number
       if (print_after-- == 0)
       {
         print_after = number_of_samples / PRINT_DELAY;
-        percent = j / (double)len;
+        percent = j / (float)len;
         printf("Pass %d of %d [ %.2f % ] \r", i+1, passes, (percent * 100));
       }
     }
@@ -250,35 +244,4 @@ void teach(neural_network *nn, int number_of_samples, double *inputs, int number
   }
   free(error); 
   free(index);
-}
-
-void clear_values(neural_network *nn)
-{
-  for (int i = 0; i < nn->input_layer_size; i++)
-  {
-    for (int j = 0; j < nn->ineurons[i].output_count; j++)
-      nn->ineurons[i].output[j]->value = 0;
-  }
-  
-  for (int i = 0; i < nn->hidden_layer_depth; i++)
-  {
-    for (int j = 0; j < nn->hidden_layer_size[i]; j++) 
-    {
-      for (int k = 0; k < nn->hneurons[i][j].output_count; k++)
-        nn->hneurons[i][j].output[k]->value = 0;
-    }
-  }
-}
-
-__inline double sigmoid(double x)
-{
-  return  0.5 * x / (1 + (x > 0 ? x : -x)) + 0.5;
-}
-
-__inline double random_weight(double min, double max)
-{
-  double range = max - min;
-  double rand_max = RAND_MAX;
-  double ran_num = rand() / rand_max;
-  return (ran_num * range) + min;
 }

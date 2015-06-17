@@ -13,5 +13,3 @@ void write_int(unsigned int i, FILE *file);
 test_sample *read_test_samples(char *name_of_samples, char *name_of_answers);
 void write_neural_network_to_file(neural_network *nn, char *str);
 neural_network *read_neural_network_from_file(char *str);
-static __inline void write_synapse(synapse *syn, FILE *file);
-static __inline void read_synapse(synapse *syn, FILE *file);

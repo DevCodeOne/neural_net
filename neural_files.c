@@ -14,7 +14,7 @@ unsigned int read_int_big_endian(FILE *file)
   return (unsigned int) (fgetc(file) << 24 | fgetc(file) << 16 | fgetc(file) << 8 | fgetc(file) << 0);
 }
 
-void write_int(unsigned int i, FILE *file)
+void write_int(unsigned int i, FILE *file) 
 {
   fwrite(&i, sizeof(int), 1, file);
 }
@@ -47,24 +47,14 @@ void write_neural_network_to_file(neural_network *nn, char *str)
   for (int i = 0; i < nn->hidden_layer_depth; i++)
     write_int(nn->hidden_layer_size[i], file); 
   write_int(nn->output_layer_size, file);
-  for (int i = 0; i < nn->input_layer_size; i++)
+  
+  for (int i = 0; i <=nn->hidden_layer_depth; i++)
   {
-    for (int j = 0; j < nn->ineurons[i].output_count; j++)
-    {
-      write_synapse(nn->ineurons[i].output[j], file);
-    }
+    int len = i > 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
+    fwrite((void *) nn->hidden_layer_weights[i], sizeof(float), nn->hidden_layer_size[i] * len, file);
   }
   
-  for (int i = 0; i < nn->hidden_layer_depth; i++)
-  {
-    for (int j = 0; j < nn->hidden_layer_size[i]; j++)
-    {
-      for (int k = 0; k < nn->hneurons[i][j].output_count; k++)
-      {
-        write_synapse(nn->hneurons[i][j].output[k], file);
-      }
-    }
-  }
+  fwrite((void *) nn->output_layer_weights, sizeof(float), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
   fclose(file);
 }
 
@@ -90,46 +80,16 @@ neural_network *read_neural_network_from_file(char *str)
     printf(" hidden_layer_size[%d] : %d \n", i, hidden_layer_size[i]);
   
   printf("output_layer_size : %d \n", output_layer_size);
-  for (int i = 0; i < input_layer_size; i++)
+  
+  for (int i = 0; i <= nn->hidden_layer_depth; i++)
   {
-    for (int j = 0; j < hidden_layer_size[0]; j++)
-    {
-      read_synapse(nn->ineurons[i].output[j], file);
-    }
+    int len = i > 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
+    fread((void *) nn->hidden_layer_weights[i], sizeof(float), nn->hidden_layer_size[i] * len, file);
   }
   
-  for (int i = 0; i < hidden_layer_depth-1; i++)
-  {
-    for (int j = 0; j < hidden_layer_size[i]; j++)
-    {
-      for (int k = 0; k < hidden_layer_size[i+1]; k++)
-      {
-        read_synapse(nn->hneurons[i][j].output[k], file);
-      }
-    }
-  }
-  
-  for (int i = 0; i < hidden_layer_size[hidden_layer_depth-1]; i++)
-  {
-    for (int j = 0; j < output_layer_size; j++)
-    {
-      read_synapse(nn->hneurons[hidden_layer_depth-1][i].output[j], file);
-    }
-  }
+  fread((void *) nn->output_layer_weights, sizeof(float), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
   
   fclose(file);
   free(hidden_layer_size);
   return nn;
-}
-
-static __inline void write_synapse(synapse *syn, FILE *file)
-{
-  fwrite((void *)(syn->weight), sizeof(double), 1, file);
-  fwrite((void *)(syn->value), sizeof(double), 1, file);
-}
-
-static __inline void read_synapse(synapse *syn, FILE *file)
-{
-  fread((void *) (syn->weight), sizeof(double), 1, file); 
-  fread((void *) (syn->value), sizeof(double), 1, file);
 }
