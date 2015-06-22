@@ -34,6 +34,8 @@ test_sample *read_test_samples(char *name_of_samples, char *name_of_answers)
   
   fread(ts->data, sizeof(char), ts->number_of_samples * ts->width_of_samples * ts->height_of_samples, samples);
   fread(ts->answers, sizeof(char), ts->number_of_samples, answers);
+  fclose(samples);
+  fclose(answers);
   return ts;
 }
 
@@ -51,10 +53,10 @@ void write_neural_network_to_file(neural_network *nn, char *str)
   for (int i = 0; i <=nn->hidden_layer_depth; i++)
   {
     int len = i > 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
-    fwrite((void *) nn->hidden_layer_weights[i], sizeof(float), nn->hidden_layer_size[i] * len, file);
+    fwrite((void *) nn->hidden_layer_weights[i], sizeof(double), nn->hidden_layer_size[i] * len, file);
   }
   
-  fwrite((void *) nn->output_layer_weights, sizeof(float), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
+  fwrite((void *) nn->output_layer_weights, sizeof(double), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
   fclose(file);
 }
 
@@ -84,12 +86,12 @@ neural_network *read_neural_network_from_file(char *str)
   for (int i = 0; i <= nn->hidden_layer_depth; i++)
   {
     int len = i > 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
-    fread((void *) nn->hidden_layer_weights[i], sizeof(float), nn->hidden_layer_size[i] * len, file);
+    fread((void *) nn->hidden_layer_weights[i], sizeof(double), nn->hidden_layer_size[i] * len, file);
   }
   
-  fread((void *) nn->output_layer_weights, sizeof(float), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
+  fread((void *) nn->output_layer_weights, sizeof(double), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
   
-  fclose(file);
   free(hidden_layer_size);
+  fclose(file);
   return nn;
 }
