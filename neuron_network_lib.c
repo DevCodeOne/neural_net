@@ -46,8 +46,11 @@ unsigned int hidden_layer_depth, unsigned int output_layer_size)
     }
   }
   
-  for (int i = 0; i < output_layer_size; i++)
+  for (int i = 0; i < output_layer_size; i++) 
+  {
     nn->oneurons[i].input = malloc(sizeof(synapse *) * hidden_layer_size[last_layer_index]);
+    nn->oneurons[i].input_count = 0;
+  }
   
   for (int i = 0; i < input_layer_size; i++) 
   {
@@ -146,6 +149,7 @@ double *emulate(neural_network *nn, double *input)
     
     for (j = 0; j < nn->oneurons[i].input_count; j++)
       value += (nn->output_layer_values[off+j] * nn->output_layer_weights[off+j]);
+    
     activity = sigmoid(value);
     nn->oneurons[i].activity = activity;
     output[i] = nn->oneurons[i].activity;
@@ -179,9 +183,7 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
   {
     double err = learning_rate * error[nn->hidden_layer_depth][i];
     for (j = 0; j < nn->hidden_layer_size[nn->hidden_layer_depth-1]; j++)
-    {
       (*oneurons[i].input[j]->weight) += (err * hneurons[nn->hidden_layer_depth-1][j].activity);
-    }
   }
   
   for (i = nn->hidden_layer_depth-1; i >= 0; i--)
@@ -194,9 +196,7 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
       count = i+1 != nn->hidden_layer_depth ? nn->hidden_layer_size[i+1] : nn->output_layer_size;
 
       for (k = 0; k < count; k++)
-      {
         err_backprop += (error[i+1][k] * (*hneurons[i][j].output[k]->weight));
-      }
       
       error[i][j] = nn->hneurons[i][j].activity * (1 - hneurons[i][j].activity) * err_backprop;
       count = i != 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
@@ -204,9 +204,7 @@ double adjust_weights(neural_network *nn, double *input, double *expected_output
       double err = learning_rate * error[i][j];
       
       for (k = 0; k < count; k++)
-      {
         (*hneurons[i][j].input[k]->weight) += (err * (*hneurons[i][j].input[k]->value));
-      }
     }
   }
   free(output);

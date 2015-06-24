@@ -43,20 +43,24 @@ void write_neural_network_to_file(neural_network *nn, char *str)
 {
   FILE *file = fopen(str, "wb");
   if (file == NULL)
+  {
     printf("Error opening file %s \n", str);
+    return;
+  }
   write_int(nn->input_layer_size, file); 
   write_int(nn->hidden_layer_depth, file); 
   for (int i = 0; i < nn->hidden_layer_depth; i++)
     write_int(nn->hidden_layer_size[i], file); 
+    
   write_int(nn->output_layer_size, file);
   
-  for (int i = 0; i <=nn->hidden_layer_depth; i++)
+  for (int i = 0; i < nn->hidden_layer_depth; i++)
   {
     int len = i > 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
-    fwrite((void *) nn->hidden_layer_weights[i], sizeof(double), nn->hidden_layer_size[i] * len, file);
+    fwrite(nn->hidden_layer_weights[i], sizeof(double), nn->hidden_layer_size[i] * len, file);
   }
   
-  fwrite((void *) nn->output_layer_weights, sizeof(double), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
+  fwrite(nn->output_layer_weights, sizeof(double), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
   fclose(file);
 }
 
@@ -64,11 +68,14 @@ neural_network *read_neural_network_from_file(char *str)
 {
   FILE *file = fopen(str, "rb");
   if (file == NULL)
+  {
     printf("Error opening file %s \n", str);
+    return NULL;
+  }
   
   unsigned int input_layer_size = read_int(file);
   unsigned int hidden_layer_depth = read_int(file);
-  unsigned int *hidden_layer_size = malloc(sizeof(int) * hidden_layer_depth); 
+  unsigned int *hidden_layer_size = malloc(sizeof(unsigned int) * hidden_layer_depth); 
   
   for (int i = 0; i < hidden_layer_depth; i++)
     hidden_layer_size[i] = read_int(file); 
@@ -83,15 +90,13 @@ neural_network *read_neural_network_from_file(char *str)
   
   printf("output_layer_size : %d \n", output_layer_size);
   
-  for (int i = 0; i <= nn->hidden_layer_depth; i++)
+  for (int i = 0; i < nn->hidden_layer_depth; i++)
   {
     int len = i > 0 ? nn->hidden_layer_size[i-1] : nn->input_layer_size;
-    fread((void *) nn->hidden_layer_weights[i], sizeof(double), nn->hidden_layer_size[i] * len, file);
+    fread(nn->hidden_layer_weights[i], sizeof(double), nn->hidden_layer_size[i] * len, file);
   }
   
-  fread((void *) nn->output_layer_weights, sizeof(double), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
-  
-  free(hidden_layer_size);
+  fread(nn->output_layer_weights, sizeof(double), nn->hidden_layer_size[nn->hidden_layer_depth-1] * nn->output_layer_size, file);
   fclose(file);
   return nn;
 }
