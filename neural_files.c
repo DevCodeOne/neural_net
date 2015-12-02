@@ -8,7 +8,6 @@ unsigned int read_int(FILE *file)
   return (unsigned int) (fgetc(file) << 0 | fgetc(file) << 8 | fgetc(file) << 16 | fgetc(file) << 24);
 }
 
-// stupid fukks
 unsigned int read_int_big_endian(FILE *file) 
 { 
   return (unsigned int) (fgetc(file) << 24 | fgetc(file) << 16 | fgetc(file) << 8 | fgetc(file) << 0);
